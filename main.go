@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"os"
 
@@ -50,11 +49,19 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 
 func ttsHandler(w http.ResponseWriter, r *http.Request) {
 
-	// logger := log.Ctx(r.Context())
-	fmt.Println(r.Body)
+	logger := log.Ctx(r.Context())
+	logger.Info().Msg("Request on TTS")
 
+	audioB64, err := synthesizeSpeechRequest("Hi! This is a simple message from Text to Speech on GCP")
+	if err != nil {
+		logger.Error().Err(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Write response
 	response := make(map[string]interface{})
-	response["name"] = "AlvarDev"
+	response["audioB64"] = audioB64
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)

@@ -2,16 +2,17 @@ package main
 
 import (
 	"context"
+	b64 "encoding/base64"
 	"fmt"
-	"io/ioutil"
 
 	texttospeech "cloud.google.com/go/texttospeech/apiv1"
 	texttospeechpb "google.golang.org/genproto/googleapis/cloud/texttospeech/v1"
 )
 
-func synthesizeSpeechRequest(message string) (string, error) {
+func synthesizeSpeechRequest(message, langCode, voiceName, gender string) (string, error) {
 
 	ctx := context.Background()
+	ssmlVoiceGender := getVoiceGender(gender)
 
 	client, err := texttospeech.NewClient(ctx)
 	if err != nil {
@@ -19,21 +20,18 @@ func synthesizeSpeechRequest(message string) (string, error) {
 	}
 	defer client.Close()
 
-	// Perform the text-to-speech request on the text input with the selected
-	// voice parameters and audio file type.
 	req := texttospeechpb.SynthesizeSpeechRequest{
-		// Set the text input to be synthesized.
+
 		Input: &texttospeechpb.SynthesisInput{
 			InputSource: &texttospeechpb.SynthesisInput_Text{Text: message},
 		},
-		// Build the voice request, select the language code ("en-US") and the SSML
-		// voice gender ("neutral").
+
 		Voice: &texttospeechpb.VoiceSelectionParams{
-			LanguageCode: "en-US",
-			Name:         "en-US-Wavenet-F",
-			SsmlGender:   texttospeechpb.SsmlVoiceGender_FEMALE,
+			LanguageCode: langCode,
+			Name:         voiceName,
+			SsmlGender:   ssmlVoiceGender,
 		},
-		// Select the type of audio file you want returned.
+
 		AudioConfig: &texttospeechpb.AudioConfig{
 			AudioEncoding: texttospeechpb.AudioEncoding_MP3,
 		},
@@ -44,13 +42,26 @@ func synthesizeSpeechRequest(message string) (string, error) {
 		return "", err
 	}
 
-	// The resp's AudioContent is binary.
-	filename := "output.mp3"
-	err = ioutil.WriteFile(filename, resp.AudioContent, 0644)
-	if err != nil {
-		return "", err
-	}
-	fmt.Printf("Audio content written to file: %v\n", filename)
+	sEnc := b64.StdEncoding.EncodeToString(resp.AudioContent)
+	fmt.Println(sEnc)
 
-	return "Dafaq", nil
+	return "Simple test", nil
+}
+
+func getVoiceGender(ssmlGender string) texttospeechpb.SsmlVoiceGender {
+
+	if ssmlGender == "MALE" {
+		return texttospeechpb.SsmlVoiceGender_MALE
+	}
+
+	if ssmlGender == "FEMALE" {
+		return texttospeechpb.SsmlVoiceGender_FEMALE
+	}
+
+	if ssmlGender == "NEUTRAL" {
+		return texttospeechpb.SsmlVoiceGender_NEUTRAL
+	}
+
+	return texttospeechpb.SsmlVoiceGender_SSML_VOICE_GENDER_UNSPECIFIED
+
 }

@@ -52,7 +52,13 @@ func ttsHandler(w http.ResponseWriter, r *http.Request) {
 	logger := log.Ctx(r.Context())
 	logger.Info().Msg("Request on TTS")
 
-	audioB64, err := synthesizeSpeechRequest("Hi! This is a simple message from Text to Speech on GCP")
+	audioB64, err := synthesizeSpeechRequest(
+		"Hi! This is a simple message from Text to Speech on GCP",
+		"en-US",
+		"en-US-Wavenet-F",
+		"FEMALE",
+	)
+
 	if err != nil {
 		logger.Error().Err(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)

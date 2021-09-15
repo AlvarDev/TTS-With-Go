@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	b64 "encoding/base64"
-	"fmt"
 
 	texttospeech "cloud.google.com/go/texttospeech/apiv1"
 	texttospeechpb "google.golang.org/genproto/googleapis/cloud/texttospeech/v1"
@@ -42,10 +41,9 @@ func synthesizeSpeechRequest(message, langCode, voiceName, gender string) (strin
 		return "", err
 	}
 
-	sEnc := b64.StdEncoding.EncodeToString(resp.AudioContent)
-	fmt.Println(sEnc)
+	audioB64 := b64.StdEncoding.EncodeToString(resp.AudioContent)
 
-	return "Simple test", nil
+	return audioB64, nil
 }
 
 func getVoiceGender(ssmlGender string) texttospeechpb.SsmlVoiceGender {

@@ -52,11 +52,21 @@ func ttsHandler(w http.ResponseWriter, r *http.Request) {
 	logger := log.Ctx(r.Context())
 	logger.Info().Msg("Request on TTS")
 
+	ms := MessageSpeech{}
+	err := json.NewDecoder(r.Body).Decode(&ms)
+	if err != nil {
+		logger.Error().Err(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// TODO: Check body att
+
 	audioB64, err := synthesizeSpeechRequest(
-		"Hi! This is a simple message from Text to Speech on GCP",
-		"en-US",
-		"en-US-Wavenet-F",
-		"FEMALE",
+		ms.Message,
+		ms.LanguageCode,
+		ms.VoiceName,
+		ms.Gender,
 	)
 
 	if err != nil {
@@ -73,5 +83,12 @@ func ttsHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	encoder := json.NewEncoder(w)
 	encoder.Encode(response)
+}
 
+// Request API
+type MessageSpeech struct {
+	Gender       string `json:"gender"`
+	LanguageCode string `json:"languageCode"`
+	Message      string `json:"message"`
+	VoiceName    string `json:"voiceName"`
 }

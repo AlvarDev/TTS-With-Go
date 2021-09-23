@@ -43,14 +43,15 @@ func main() {
 
 }
 
-func initializeAppDefault() *firebase.App {
+func initializeAppDefault() (*firebase.App, error) {
 	ctx := context.Background()
 	config := &firebase.Config{ProjectID: os.Getenv("PROJECT_ID")}
 	app, err := firebase.NewApp(ctx, config)
 	if err != nil {
 		fmt.Printf("error initializing app: %v\n", err)
+		return nil, err
 	}
-	return app
+	return app, nil
 }
 
 func authMiddleware(next http.Handler) http.Handler {
@@ -63,7 +64,12 @@ func authMiddleware(next http.Handler) http.Handler {
 		}
 
 		idToken := authHeader[1]
-		app := initializeAppDefault()
+		app, err := initializeAppDefault()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
 		ctx := context.Background()
 		client, err := app.Auth(ctx)
 		if err != nil {
@@ -74,7 +80,7 @@ func authMiddleware(next http.Handler) http.Handler {
 		token, err := client.VerifyIDToken(ctx, idToken)
 		if err != nil {
 			fmt.Println(err)
-			http.Error(w, "User not found", http.StatusForbidden)
+			http.Error(w, err.Error(), http.StatusForbidden)
 			return
 		}
 

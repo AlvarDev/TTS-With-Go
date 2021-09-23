@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/rs/zerolog/log"
@@ -20,15 +21,20 @@ func ttsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Check body att
+	// Verify if request has all attr needed
+	err = verifyMessageSpeech(&ms)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
+	// Synthesize message
 	audioB64, err := synthesizeSpeechRequest(
 		ms.Message,
 		ms.LanguageCode,
 		ms.VoiceName,
 		ms.Gender,
 	)
-
 	if err != nil {
 		logger.Error().Err(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -43,6 +49,27 @@ func ttsHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	encoder := json.NewEncoder(w)
 	encoder.Encode(response)
+}
+
+func verifyMessageSpeech(ms *MessageSpeech) error {
+
+	if ms.Gender == "" {
+		return errors.New("Missing 'gender'")
+	}
+
+	if ms.LanguageCode == "" {
+		return errors.New("Missing 'languageCode'")
+	}
+
+	if ms.Message == "" {
+		return errors.New("Missing 'message'")
+	}
+
+	if ms.VoiceName == "" {
+		return errors.New("Missing 'voiceName'")
+	}
+
+	return nil
 }
 
 // Request API

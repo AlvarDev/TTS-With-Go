@@ -1,11 +1,15 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
+	"strings"
 
 	"contrib.go.opencensus.io/exporter/stackdriver/propagation"
+	firebase "firebase.google.com/go"
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
 	"github.com/rs/zerolog"
@@ -24,6 +28,7 @@ func main() {
 
 	handler := cors.Default().Handler(r)
 	handler = middleware(handler)
+	handler = authMiddleware(handler)
 
 	httpHandler := &ochttp.Handler{
 		Propagation: &propagation.HTTPFormat{},
@@ -36,6 +41,50 @@ func main() {
 		log.Fatal().Err(err).Msg("Can't start server")
 	}
 
+}
+
+func initializeAppDefault() *firebase.App {
+	ctx := context.Background()
+	config := &firebase.Config{ProjectID: os.Getenv("PROJECT_ID")}
+	app, err := firebase.NewApp(ctx, config)
+	if err != nil {
+		fmt.Printf("error initializing app: %v\n", err)
+	}
+	return app
+}
+
+func authMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		authHeader := strings.Split(r.Header.Get("Authorization"), " ")
+		if len(authHeader) != 2 {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+
+		idToken := authHeader[1]
+		app := initializeAppDefault()
+		ctx := context.Background()
+		client, err := app.Auth(ctx)
+		if err != nil {
+			http.Error(w, "FirebaseError", http.StatusInternalServerError)
+			return
+		}
+
+		token, err := client.VerifyIDToken(ctx, idToken)
+		if err != nil {
+			fmt.Println(err)
+			http.Error(w, "User not found", http.StatusForbidden)
+			return
+		}
+
+		if token.Audience != os.Getenv("PROJECT_ID") {
+			http.Error(w, "Unauthorized user", http.StatusUnauthorized)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }
 
 func rootHandler(w http.ResponseWriter, r *http.Request) {

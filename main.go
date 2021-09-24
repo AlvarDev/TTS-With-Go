@@ -6,7 +6,6 @@ import (
 
 	"contrib.go.opencensus.io/exporter/stackdriver/propagation"
 	"github.com/gorilla/mux"
-	"github.com/rs/cors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/yfuruyama/crzerolog"
@@ -20,10 +19,7 @@ func main() {
 
 	rootLogger := zerolog.New(os.Stdout)
 	middleware := crzerolog.InjectLogger(&rootLogger)
-
-	handler := cors.Default().Handler(r)
-	handler = middleware(handler)
-	handler = authMiddleware(handler)
+	handler := middleware(r)
 
 	httpHandler := &ochttp.Handler{
 		Propagation: &propagation.HTTPFormat{},
